@@ -1,7 +1,6 @@
 import flet as ft
 from UI.alert import AlertManager
 
-
 class View:
     def __init__(self, page: ft.Page):
         # Page
@@ -32,8 +31,7 @@ class View:
 
         # Riga 1
         self.dd_category = ft.Dropdown(label="Categoria", width=200) # TODO: Gestire il dropdown
-        self.controller.populate_dd_categories()
-
+        self.controller.load_categories()
         self.dp1 = ft.DatePicker(
             on_change=lambda e: print(f"Giorno selezionato: {self.dp1.value}"),
             on_dismiss=lambda e: print("Data non selezionata")

@@ -1,73 +1,60 @@
 import networkx as nx
+
 from database.dao import DAO
 
 class Model:
     def __init__(self):
         self.G = nx.DiGraph()
-        self.prodotti = []
-        self.id_map = {}
-        self.best_path = []
-        self.best_score = 0
+        self.id_map= {}
+        self.nodi = []
+        self.dao = DAO()
 
     def get_date_range(self):
         return DAO.get_date_range()
 
     def get_categories(self):
-        return DAO.get_categories()
+        return self.dao.get_category()
 
-    def crea_grafo(self, category, inizio, fine):
-        self.G.clear()
+    def build_grafo(self, cat, data_inizio, data_fine):
+        nodi = self.dao.get_prodotti_per_categoria(cat)
+        for nodo in nodi:
+            self. nodi.append(nodo)
+            self.G.add_node(nodo)
+            self.id_map[nodo.id] = nodo
 
-        self.prodotti = DAO.get_products_by_categories(category)
-        self.G.add_nodes_from(self.prodotti)
+        connessioni = self.dao.get_connessioni(cat, data_inizio, data_fine)
+        for connessione in connessioni:
+            v1 = connessione['vendite1']
+            v2 = connessione['vendite2']
 
-        for prodotto in self.prodotti:
-            self.id_map[prodotto.id] = prodotto
+            nodo1 = self.id_map[connessione['product1']]
+            nodo2 = self.id_map[connessione['product2']]
 
-        #creo archi
-        dizionario_prodotto_vendite = DAO.get_sales_by_product(category, inizio, fine)
-        for prodotto1 in self.prodotti:
-            for prodotto2 in self.prodotti:
-                if prodotto1.id == prodotto2.id:
-                    continue
+            peso = connessione.get('peso', 0)
 
-                vendita1 = dizionario_prodotto_vendite.get(prodotto1.id, 0)
-                vendita2 = dizionario_prodotto_vendite.get(prodotto2.id, 0)
+            if v1 > v2:
+                self.G.add_edge(nodo1, nodo2, weight = peso)
+            elif v1 < v2:
+                self.G.add_edge(nodo2, nodo1, weight = peso)
+            else:
+                self.G.add_edge(nodo1, nodo2, weight = peso)
+                self.G.add_edge(nodo2, nodo1, weight = peso)
 
+    def dettagli_grafo(self):
+        return self.G.number_of_nodes(), self.G.number_of_edges()
 
-                if vendita1 > 0 and vendita2 > 0:
-                    peso_arco = vendita1 + vendita2
-                    if vendita1 > vendita2:
-                        self.G.add_edge(prodotto1, prodotto2, weight = peso_arco)
-                    elif vendita1 < vendita2:
-                        self.G.add_edge(prodotto2, prodotto1, weight = peso_arco)
-                    elif vendita2 == vendita1:
-                        self.G.add_edge(prodotto1, prodotto2, weight = peso_arco)
-                        self.G.add_edge(prodotto2, prodotto1, weight = peso_arco)
+    def trova_prodotti_piu_venduti(self):
 
-    def get_number_of_edges_and_nodes(self):
-        return self.G.number_of_edges(), self.G.number_of_nodes()
-
-    def get_5_most_sold(self):
         prodotti_piu_venduti = []
-        for nodo in self.G.nodes:
-            somma = 0
-            for archi_uscenti in self.G.out_edges(nodo, data=True):
-                somma += archi_uscenti[2]['weight']
-            for archi_entranti in self.G.in_edges(nodo, data=True):
-                somma -= archi_entranti[2]['weight'] #[2] perche è l'attributo
-            prodotti_piu_venduti.append((nodo,somma))
-
-        prodotti_piu_venduti.sort(key=lambda x: x[1], reverse=True)
-        return prodotti_piu_venduti[0:5]
-
-
-
-
-
-
-
-
+        for n in self.G.nodes():
+            score = 0
+            for e_out in self.G.out_edges(n, data=True):
+                score += e_out[2]["weight"]
+            for e_in in self.G.in_edges(n, data=True):
+                score -= e_in[2]["weight"]
+            prodotti_piu_venduti.append((n,score))
+        prodotti_piu_venduti.sort(key = lambda x: x[1], reverse = True)
+        return prodotti_piu_venduti[:5]
 
 
 

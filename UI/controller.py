@@ -1,3 +1,4 @@
+
 from UI.view import View
 from model.model import Model
 import flet as ft
@@ -19,52 +20,43 @@ class Controller:
         self._view.dp2.last_date = datetime.date(last.year, last.month, last.day)
         self._view.dp2.current_date = datetime.date(last.year, last.month, last.day)
 
-    def populate_dd_categories(self):
+    def load_categories(self):
         categorie = self._model.get_categories()
+        for cat in categorie:
+            self._view.dd_category.options.append(ft.dropdown.Option(key=cat.id, text=cat.category_name))
 
-        options = []
-        for categoria in categorie:
-            option = ft.dropdown.Option(text = categoria.category_name, key = str(categoria.id))
-            options.append(option)
-        self._view.dd_category.options = options
-        self._view.update()
 
     def handle_crea_grafo(self, e):
         """ Handler per gestire creazione del grafo """
+        self._model.G.clear()
         self._view.txt_risultato.controls.clear()
-        if self._view.dd_category.value is None:
-            self._view.show_alert("Selezionare una categoria")
 
-        categoria_selezionata = self._view.dd_category.value
-        opzione = None
-        for opt in self._view.dd_category.options:
-            if opt.key == categoria_selezionata:
-                opzione = opt
-                break
-        categoria_id = int(opzione.key)
+        cat_scelta = self._view.dd_category.value
+        data_inizio = self._view.dp1.value.date()
+        data_fine = self._view.dp2.value.date()
+        print(data_fine)
+        grafo = self._model.build_grafo(cat_scelta, data_inizio, data_fine)
+        num_nodi, num_archi = self._model.dettagli_grafo()
+        self._view.txt_risultato.controls.append(ft.Text('Date selezionate:'))
+        self._view.txt_risultato.controls.append(ft.Text(f'Start date: {data_inizio}'))
+        self._view.txt_risultato.controls.append(ft.Text(f'End date: {data_fine}'))
+        self._view.txt_risultato.controls.append(ft.Text('Grafo correttamente creato:'))
+        self._view.txt_risultato.controls.append(ft.Text(f'Numero di nodi: {num_nodi}'))
+        self._view.txt_risultato.controls.append(ft.Text(f'Numero di archi: {num_archi}'))
 
-        self._model.crea_grafo(categoria_id, self._view.dp1.value, self._view.dp2.value)
-        numero_archi, numero_nodi = self._model.get_number_of_edges_and_nodes()
-        prodotti_piu_venduti = self._model.get_5_most_sold()
-
-        self._view.txt_risultato.controls.append(ft.Text("Date Selezionate"))
-        self._view.txt_risultato.controls.append(ft.Text(f"Start Date: {self._view.dp1.value}"))
-        self._view.txt_risultato.controls.append(ft.Text(f"End Date: {self._view.dp2.value}"))
-        self._view.txt_risultato.controls.append(ft.Text("Grafo correttamente creato"))
-        self._view.txt_risultato.controls.append(ft.Text(f"Numero di nodi: {numero_nodi}"))
-        self._view.txt_risultato.controls.append(ft.Text(f"Numero di archi: {numero_archi}"))
-        self._view.txt_risultato.controls.append(ft.Text("I cinque prodotti piu venduti sono:"))
-        i = 0
-        while i < 5:
-            self._view.txt_risultato.controls.append(ft.Text(f"  {i+1}. {prodotti_piu_venduti[i]}"))
-            i += 1
         self._view.update()
-
 
 
     def handle_best_prodotti(self, e):
         """ Handler per gestire la ricerca dei prodotti migliori """
-        # TODO
+        migliori_prodotti = self._model.trova_prodotti_piu_venduti()
+        self._view.txt_risultato.controls.append(ft.Text('I cinque prodotti più venduti sono:'))
+        for prodotto in migliori_prodotti:
+            nome_prodotto = prodotto[0].product_name
+            valore = prodotto[1]
+            self._view.txt_risultato.controls.append(ft.Text(f'{nome_prodotto} with score {valore}'))
+
+        self._view.update()
 
     def handle_cerca_cammino(self, e):
         """ Handler per gestire il problema ricorsivo di ricerca del cammino """
